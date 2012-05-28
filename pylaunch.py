@@ -5,6 +5,10 @@ from tkinter import *
 from tkinter import filedialog
 import subprocess
 
+class PyLaunchValidator():
+    def __init__(self, **kwargs):
+        pass
+
 class PyLaunch():
     def __init__(self, title="PyLaunch"):
         self._fields = []
@@ -20,7 +24,7 @@ class PyLaunch():
         self._root = Tk()
         self._root.title(self._title)
         self._main_frame = Frame()
-        self._main_frame.pack(expand=YES, fill=BOTH)
+        self._main_frame.pack(expand=YES, fill=BOTH, padx=10, pady=10)
         self._create_window()
         
         self._fields_frame = Frame(self._main_frame)
@@ -32,6 +36,7 @@ class PyLaunch():
         self._create_result_widget()
         self._create_buttons()
         self._root.mainloop()
+        print("PyLaunch terminated.")
         
     def create_field_widget(self, field):
         frame = Frame(self._fields_frame)
@@ -46,31 +51,13 @@ class PyLaunch():
             input_widget.pack(side=BOTTOM, expand=YES, fill=X)
             element.pack(side=BOTTOM)
         
-        input_widget.bind("<Tab>", self.on_field_tab)
-        input_widget.bind("<Return>", self.on_field_enter)
+        input_widget.bind("<Tab>", lambda e, input_widget=input_widget:self._on_field_tab(input_widget))
+        input_widget.bind("<Return>", self._on_field_enter)
         field["widget"] = input_widget
-        Label(frame, text=field["title"], justify=LEFT, anchor=W).pack(expand=YES, fill=X)
+        Label(frame, text=field["title"], justify=LEFT, anchor=W, fg="#2D5986").pack(expand=YES, fill=X)
         element.pack(side=BOTTOM, expand=YES, fill=X)
         frame.pack(side=TOP, expand=YES, fill=X)
-        
-    def _on_button_select_file(self, text_field, dialog_type):
-        if dialog_type == "file":
-            filename = filedialog.askopenfilename().strip()
-        else:
-            filename = filedialog.askdirectory().strip()
-        
-        if filename == "":
-            return
-        text_field.delete(1.0, END)
-        text_field.insert(1.0, filename)
-        
-    def on_field_tab(self, element):
-        return "break"
 
-    def on_field_enter(self, element):
-        self._on_button_launch()
-        return "break"
-        
     def _create_buttons(self):
         frame = Frame(self._main_frame)
         launch_button = Button(frame, text="Launch", command=self._on_button_launch)
@@ -125,18 +112,47 @@ class PyLaunch():
     def _on_button_exit(self):
         self._root.destroy()
 
+    def _on_button_select_file(self, text_field, dialog_type):
+        if dialog_type == "file":
+            filename = filedialog.askopenfilename().strip()
+        else:
+            filename = filedialog.askdirectory().strip()
+        
+        if filename == "":
+            return
+        text_field.delete(1.0, END)
+        text_field.insert(1.0, filename)
+        
+    def _on_field_tab(self, element):
+        element.tk_focusNext().focus()
+        return "break"
+
+    def _on_field_enter(self, element):
+        self._on_button_launch()
+        return "break"
+        
+### Now starts the demo ###
+
 def pylaunch_callback(params):
-    return ["dummy.py"] + ([p[1].strip() for p in params])
+    """
+    Callback function for generating the command line parameters
+    """
+    return [__file__] + ([p[1].strip() for p in params])
 
 def main():
-    pl = PyLaunch(title="My Script Launcher")
-    
-    pl.field(field_type="text", field_id="vorname", field_title="Dein Vorname")
-    pl.field(field_type="text", field_id="nachname", field_title="Dein Nachname")
-    pl.field(field_type="file", field_id="inputfile1", field_title="Die CSV-Tabelle mit den Motoren")
-    pl.field(field_type="file", field_id="inputfile2", field_title="Die CSV-Tabelle mit den Umrichtern")
-    pl.field(field_type="folder", field_id="folder", field_title="Ordner mit den Fotos")
-    
-    pl.launch(pylaunch_callback)
+
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "pylaunch":
+            pl = PyLaunch(title="PyLaunch Demo")
+            pl.field(field_type="text", field_id="firstname", field_title="Your first name", field_validator=PyLaunchValidator(required=True))
+            pl.field(field_type="text", field_id="lastname", field_title="Your last name", field_validator=PyLaunchValidator(required=True))
+            pl.field(field_type="file", field_id="inputfile1", field_title="Some file to select")
+            pl.field(field_type="folder", field_id="folder1", field_title="Some folder to select")
+            print("Starting PyLaunch...")
+            pl.launch(pylaunch_callback)
+        else:
+            print("Calling the main script. You are '{} {}' and you have selected the file '{}' and the folder '{}'".format(*sys.argv[1:len(sys.argv)]))
+    else:
+        print("Params are missing. Usage: pylaunch.py pylaunch")
     
 if __name__ == "__main__": main()
