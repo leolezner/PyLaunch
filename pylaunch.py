@@ -3,18 +3,55 @@ __all__ = []
 
 from tkinter import *
 from tkinter import filedialog
+from threading import Thread
 import subprocess
 
 class PyLaunchValidator():
     def __init__(self, **kwargs):
         pass
+        
+class PyLaunchThread(Thread):
+    def __init__(self, caller):
+        Thread.__init__(self)
+        self.caller = caller
+        
+    def run(self):
+        
+        self.caller._on_button_clear()
+        self.caller._result_widget.insert(END, "Please wait...")
+        params = self.caller._generate_command_line()
+        
+        self.caller._on_button_clear()
+        
+        try:
+            cmd = [sys.executable]
+            cmd.extend(params)
+            self._threading_state(thread_state = "start")
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            for line in p.stdout:
+                self.caller._result_widget.insert(END, "{}".format(line.decode("utf-8")))
+                self.caller._result_widget.see(END)
+            self._threading_state(thread_state = "finish")
+        except OSError as err:
+            self.caller._result_widget.insert(END, "{}\n".format(err))
+            self.caller._result_widget.see(END)
 
-class PyLaunch():
+        
+    def _threading_state(self, thread_state):
+        if thread_state == "start":
+            self.caller._launch_button.config(state=DISABLED)
+
+        if thread_state == "finish":
+            self.caller._launch_button.config(state=NORMAL)
+
+
+class PyLaunch(Thread):
     def __init__(self, title="PyLaunch"):
         self._fields = []
         self._title = title
         self._window_height = 500
         self._window_width = 700
+        Thread.__init__(self)
         
     def field(self, field_type, field_id, field_title, field_validator=None):
         self._fields.append({"type": field_type, "id": field_id, "title": field_title, "validator": field_validator})
@@ -60,9 +97,8 @@ class PyLaunch():
 
     def _create_buttons(self):
         frame = Frame(self._main_frame)
-        launch_button = Button(frame, text="Launch", command=self._on_button_launch)
-        launch_button.pack(side=LEFT)
-        Button(frame, text="Launch and Exit", command=self._on_button_launch_and_exit).pack(side=LEFT)
+        self._launch_button = Button(frame, text="Launch", command=self._on_button_launch)
+        self._launch_button.pack(side=LEFT)
         Button(frame, text="Clear", command=self._on_button_clear).pack(side=LEFT)
         Button(frame, text="Exit", command=self._on_button_exit).pack(side=LEFT)
         frame.pack(side=BOTTOM)
@@ -88,23 +124,7 @@ class PyLaunch():
         return self._callback(params)
     
     def _on_button_launch(self):
-        self._on_button_clear()
-        self._result_widget.insert(END, "Please wait...")
-        params = self._generate_command_line()
-        try:
-            cmd = [sys.executable]
-            cmd.extend(params)
-            result = subprocess.check_output(cmd).decode("utf-8")
-        except OSError as err:
-            result = err
-        
-        self._on_button_clear()
-        self._result_widget.insert(END, "{}\n".format(result))
-        self._result_widget.see(END)
-        
-    def _on_button_launch_and_exit(self):
-        self._on_button_launch()
-        self._on_button_exit()
+        PyLaunchThread(self).start()
         
     def _on_button_clear(self):
         self._result_widget.delete(1.0, END)
