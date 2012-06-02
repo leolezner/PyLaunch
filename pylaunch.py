@@ -57,13 +57,17 @@ class PyLaunch(Thread):
         self._fields.append({"type": field_type, "id": field_id, "title": field_title, "validator": field_validator})
 
     def launch(self, callback):
+        '''
+        Starts the GUI and the main loop.
+        '''
         self._callback = callback
+        # Displaying the main window
         self._root = Tk()
         self._root.title(self._title)
         self._main_frame = Frame()
         self._main_frame.pack(expand=YES, fill=BOTH, padx=10, pady=10)
         self._create_window()
-        
+        # Frame for the fields
         self._fields_frame = Frame(self._main_frame)
         self._fields_frame.pack(expand=NO, fill=X)
         
@@ -76,8 +80,11 @@ class PyLaunch(Thread):
         print("PyLaunch terminated.")
         
     def create_field_widget(self, field):
+        '''
+        Creates one field with caption and adds it to the array of fields.
+        '''
         frame = Frame(self._fields_frame)
-        
+        # Select the field type
         if field["type"] == "text":
             input_widget = Text(frame, height=1, width=70, relief=SUNKEN, bd=1)
             element = input_widget
@@ -88,9 +95,13 @@ class PyLaunch(Thread):
             input_widget.pack(side=BOTTOM, expand=YES, fill=X)
             element.pack(side=BOTTOM)
         
+        # Text fields should respond to the tab button
         input_widget.bind("<Tab>", lambda e, input_widget=input_widget:self._on_field_tab(input_widget))
+        # Press the launch button by pressing the enter key
         input_widget.bind("<Return>", self._on_field_enter)
+        # The widget object
         field["widget"] = input_widget
+        # Label for the text field
         Label(frame, text=field["title"], justify=LEFT, anchor=W, fg="#2D5986").pack(expand=YES, fill=X)
         element.pack(side=BOTTOM, expand=YES, fill=X)
         frame.pack(side=TOP, expand=YES, fill=X)
